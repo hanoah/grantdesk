@@ -78,7 +78,7 @@ Either use the **Import** page in the browser (download template → upload → 
 
 ## 6. Optional: AI
 
-If the person has an Anthropic API key and wants smarter suggestions, they can paste it in ⚙︎ Settings themselves. Never ask them to paste it to you in chat, never type it into any file, and never log it. Everything works without it.
+If the person wants smarter suggestions, they can connect a model provider in ⚙︎ Settings themselves (OpenAI, Anthropic, local Ollama, or any OpenAI-compatible endpoint). Never ask them to paste an API key to you in chat, never type it into any file, and never log it. Everything works without it.
 
 ## Other useful endpoints
 

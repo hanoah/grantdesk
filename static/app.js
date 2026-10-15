@@ -390,7 +390,7 @@
         <div>
           <div class="card ai-box" style="margin-bottom:16px">
             <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">✨ Proposed next step</h3>
-              <span>${state.settings.has_api_key ? '<span class="pill green">AI</span>' : '<span class="pill soon" title="Add an API key in Settings for full AI suggestions">rule-based · AI coming soon</span>'}</span></div>
+              <span>${state.settings.has_api_key ? '<span class="pill green">AI</span>' : '<span class="pill soon" title="Connect a model in Settings for full AI suggestions">rule-based · AI coming soon</span>'}</span></div>
             <div id="ai-body" class="muted">Thinking…</div>
           </div>
           <div class="card">
@@ -588,18 +588,25 @@
 
   // ------------------------------------------------------------------ settings
   function settingsModal() {
-    const s = state.settings;
+    const s = state.settings; const P = s.providers || {};
     const m = modal(`<div class="modal-head"><h2>Settings</h2><button class="btn ghost" data-close>✕</button></div>
       <label class="field"><span>Your organisation</span><input id="s-org" value="${esc(s.org_name)}"></label>
       <label class="field"><span>Your grants inbox (shown as sender on logged emails)</span><input id="s-email" value="${esc(s.our_email)}"></label>
       <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
       <h3>AI suggestions</h3>
-      <p class="muted" style="font-size:12px">Optional. With an Anthropic API key, next-step suggestions, thread summaries and prospect parsing use a real model. Without one, GrantDesk uses built-in rules. The key is stored only in <code>grantdesk.db</code> on this computer and sent only to api.anthropic.com.</p>
-      <label class="field"><span>Anthropic API key ${s.has_api_key ? '<span class="pill green">set</span>' : ''}</span><input id="s-key" type="password" placeholder="${s.has_api_key ? '•••••••• (leave blank to keep)' : 'sk-ant-…'}" autocomplete="off"></label>
-      <label class="field"><span>Model</span><input id="s-model" value="${esc(s.model)}"></label>
+      <p class="muted" style="font-size:12px">Optional. Connect any model provider and next-step suggestions, thread summaries and prospect parsing use a real model instead of built-in rules. Works with OpenAI, Anthropic, a local Ollama, or any OpenAI-compatible endpoint. The key is stored only in <code>grantdesk.db</code> on this computer and sent only to the endpoint below.</p>
+      <div class="row">
+        <label class="field"><span>Provider</span><select id="s-provider">
+          <option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="ollama">Ollama (local, no key)</option><option value="custom">Other OpenAI-compatible</option></select></label>
+        <label class="field"><span>Model</span><input id="s-model" value="${esc(s.model)}"></label>
+      </div>
+      <label class="field"><span>Endpoint base URL</span><input id="s-base" value="${esc(s.base_url)}"></label>
+      <label class="field"><span>API key ${s.has_api_key ? '<span class="pill green">set</span>' : ''}</span><input id="s-key" type="password" placeholder="${s.has_api_key ? '•••••••• (leave blank to keep)' : 'paste key'}" autocomplete="off"></label>
       <div class="modal-foot">${s.has_api_key ? '<button class="btn danger" id="s-clear" style="margin-right:auto">Remove key</button>' : ''}<button class="btn" data-close>Cancel</button><button class="btn primary" id="s-save">Save</button></div>`, { narrow: true });
+    const prov = $('#s-provider', m.box); prov.value = s.provider || 'openai';
+    prov.addEventListener('change', () => { const d = P[prov.value] || { base_url: '', model: '' }; $('#s-base', m.box).value = d.base_url; $('#s-model', m.box).value = d.model; });
     $('#s-save', m.box).addEventListener('click', async () => {
-      const body = { org_name: $('#s-org', m.box).value, our_email: $('#s-email', m.box).value, model: $('#s-model', m.box).value };
+      const body = { org_name: $('#s-org', m.box).value, our_email: $('#s-email', m.box).value, provider: prov.value, model: $('#s-model', m.box).value, base_url: $('#s-base', m.box).value };
       const key = $('#s-key', m.box).value.trim(); if (key) body.api_key = key;
       await api('/api/settings', { method: 'POST', body }); m.close(); toast('Settings saved'); route();
     });

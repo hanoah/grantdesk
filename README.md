@@ -41,7 +41,7 @@ The court flips automatically from the activity log. An inbound email or a meeti
 
 ## AI
 
-Without any setup, "Proposed next step" and thread summaries use built-in rules (stage, days idle, whose court, score). If you add an Anthropic API key in **⚙︎ Settings**, those switch to a real model, and pasted prospects are parsed more intelligently. The key is stored only in `grantdesk.db` on your machine and sent only to api.anthropic.com. Everything works without it.
+Without any setup, "Proposed next step" and thread summaries use built-in rules (stage, days idle, whose court, score). In **⚙︎ Settings** you can connect any model provider — OpenAI, Anthropic, a local Ollama, or any OpenAI-compatible endpoint — and those switch to a real model, and pasted prospects are parsed more intelligently. The key is stored only in `grantdesk.db` on your machine and sent only to the endpoint you configure. Everything works without it.
 
 ## Prototype-only bits (marked "coming soon" in the UI)
 

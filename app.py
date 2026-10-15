@@ -681,23 +681,49 @@ def parse_pasted_email(text):
 
 # ------------------------------------------------------------------- LLM hook
 def llm_available():
-    return bool(get_setting("api_key"))
+    return bool(get_setting("api_key")) or get_setting("provider") == "ollama"
+
+
+PROVIDER_DEFAULTS = {
+    # provider: (base_url, default model)
+    "openai": ("https://api.openai.com/v1", "gpt-4o-mini"),
+    "anthropic": ("https://api.anthropic.com", "claude-sonnet-4-5"),
+    "ollama": ("http://localhost:11434/v1", "llama3.1"),
+    "custom": ("", ""),
+}
 
 
 def llm(prompt, system="You are a concise assistant helping a small grant-making team.", max_tokens=600):
+    """Call whichever model provider is configured in Settings. Anthropic uses its own API shape;
+    everything else is treated as an OpenAI-compatible /chat/completions endpoint (OpenAI, Ollama,
+    Mistral, Groq, Together, LM Studio, Azure-style gateways, ...)."""
     key = get_setting("api_key")
-    if not key:
+    provider = get_setting("provider") or "openai"
+    base = (get_setting("base_url") or PROVIDER_DEFAULTS.get(provider, ("", ""))[0]).rstrip("/")
+    model = get_setting("model") or PROVIDER_DEFAULTS.get(provider, ("", ""))[1]
+    if not key and provider != "ollama":
         raise RuntimeError("no api key")
-    model = get_setting("model") or "claude-sonnet-4-5"
+    if provider == "anthropic":
+        req = urllib.request.Request(
+            base + "/v1/messages",
+            data=json.dumps({"model": model, "max_tokens": max_tokens, "system": system,
+                             "messages": [{"role": "user", "content": prompt}]}).encode(),
+            headers={"content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01"},
+            method="POST")
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+        return "".join(b.get("text", "") for b in data.get("content", []))
+    headers = {"content-type": "application/json"}
+    if key:
+        headers["authorization"] = f"Bearer {key}"
     req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps({"model": model, "max_tokens": max_tokens, "system": system,
-                         "messages": [{"role": "user", "content": prompt}]}).encode(),
-        headers={"content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01"},
-        method="POST")
-    with urllib.request.urlopen(req, timeout=60) as r:
+        base + "/chat/completions",
+        data=json.dumps({"model": model, "max_tokens": max_tokens,
+                         "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}).encode(),
+        headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=90) as r:
         data = json.loads(r.read())
-    return "".join(b.get("text", "") for b in data.get("content", []))
+    return data["choices"][0]["message"]["content"]
 
 
 def grant_context(d):
@@ -980,7 +1006,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_bytes(json.dumps(out, indent=2, default=str).encode(), "application/json",
                                        f"grantdesk_backup_{today()}.json")
             if p == "/api/settings":
-                return self.send_json({"has_api_key": llm_available(), "model": get_setting("model") or "claude-sonnet-4-5",
+                prov = get_setting("provider") or "openai"
+                return self.send_json({"has_api_key": llm_available(), "provider": prov,
+                                       "model": get_setting("model") or PROVIDER_DEFAULTS.get(prov, ("", ""))[1],
+                                       "base_url": get_setting("base_url") or PROVIDER_DEFAULTS.get(prov, ("", ""))[0],
+                                       "providers": {k: {"base_url": v[0], "model": v[1]} for k, v in PROVIDER_DEFAULTS.items()},
                                        "our_email": get_setting("our_email") or "grants@yourorg.example",
                                        "org_name": get_setting("org_name") or "Our Foundation", "stages": STAGES})
             if p == "/api/stats":
@@ -1092,7 +1122,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"ok": True, "created": seed()})
             if p == "/api/settings":
                 body = self.read_json()
-                for k in ("model", "our_email", "org_name"):
+                for k in ("model", "our_email", "org_name", "provider", "base_url"):
                     if k in body:
                         set_setting(k, body[k])
                 if "api_key" in body:  # stored locally in grantdesk.db only; never logged
