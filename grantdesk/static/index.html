@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GrantDesk</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#/">🎾 <span>GrantDesk</span></a>
+  <nav class="tabs">
+    <a href="#/" data-route="pipeline">Pipeline</a>
+    <a href="#/board" data-route="board">Board</a>
+    <a href="#/import" data-route="import">Import</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="ai-pill" class="pill muted" title="AI suggestions use rules until you add an API key in Settings">AI: rules</span>
+    <button class="btn ghost" id="btn-settings" title="Settings">⚙︎</button>
+    <button class="btn primary" id="btn-add">+ Add new prospect</button>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<div id="modal-root"></div>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
